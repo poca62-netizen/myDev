@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계산기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .calculator {
+    background: #222;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    width: 100%;
+    max-width: 360px;
+    overflow: hidden;
+  }
+  .display {
+    background: #000;
+    color: #fff;
+    padding: 30px 20px;
+    text-align: right;
+    font-size: 2.5rem;
+    min-height: 100px;
+    word-wrap: break-word;
+    word-break: break-all;
+  }
+  .expression {
+    font-size: 1rem;
+    color: #888;
+    min-height: 24px;
+    margin-bottom: 8px;
+  }
+  .result {
+    font-size: 2.5rem;
+    font-weight: 300;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: #444;
+  }
+  button {
+    border: none;
+    background: #333;
+    color: #fff;
+    font-size: 1.5rem;
+    padding: 24px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    outline: none;
+  }
+  button:hover { background: #3a3a3a; }
+  button:active { background: #555; }
+  .operator {
+    background: #ff9f0a;
+    color: #fff;
+  }
+  .operator:hover { background: #ffae33; }
+  .equals {
+    background: #ff9f0a;
+    grid-column: span 2;
+  }
+  .function {
+    background: #a5a5a5;
+    color: #000;
+  }
+  .function:hover { background: #bfbfbf; }
+</style>
+</head>
+<body>
+<div class="calculator">
+  <div class="display">
+    <div class="expression" id="expression"></div>
+    <div class="result" id="result">0</div>
+  </div>
+  <div class="buttons">
+    <button class="function" data-action="clear">C</button>
+    <button class="function" data-action="backspace">⌫</button>
+    <button class="function" data-action="percent">%</button>
+    <button class="operator" data-operator="/">÷</button>
+
+    <button data-number="7">7</button>
+    <button data-number="8">8</button>
+    <button data-number="9">9</button>
+    <button class="operator" data-operator="*">×</button>
+
+    <button data-number="4">4</button>
+    <button data-number="5">5</button>
+    <button data-number="6">6</button>
+    <button class="operator" data-operator="-">−</button>
+
+    <button data-number="1">1</button>
+    <button data-number="2">2</button>
+    <button data-number="3">3</button>
+    <button class="operator" data-operator="+">+</button>
+
+    <button data-number="0">0</button>
+    <button data-number=".">.</button>
+    <button class="equals" data-action="equals">=</button>
+  </div>
+</div>
+
+<script>
+  const resultEl = document.getElementById('result');
+  const expressionEl = document.getElementById('expression');
+  let currentInput = '0';
+  let expression = '';
+  let lastResult = null;
+  let resetNext = false;
+
+  function updateDisplay() {
+    resultEl.textContent = currentInput;
+    expressionEl.textContent = expression;
+  }
+
+  function inputNumber(num) {
+    if (resetNext) {
+      currentInput = '0';
+      expression = '';
+      resetNext = false;
+    }
+    if (currentInput === '0' && num !== '.') {
+      currentInput = num;
+    } else if (num === '.' && currentInput.includes('.')) {
+      return;
+    } else {
+      currentInput += num;
+    }
+    updateDisplay();
+  }
+
+  function inputOperator(op) {
+    const displayOp = { '+': '+', '-': '−', '*': '×', '/': '÷' }[op] || op;
+    expression += currentInput + ' ' + displayOp + ' ';
+    lastResult = currentInput;
+    resetNext = true;
+    updateDisplay();
+  }
+
+  function calculate() {
+    if (!expression) return;
+    try {
+      const expr = expression + currentInput;
+      const jsExpr = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+      const evalResult = Function('"use strict";return (' + jsExpr + ')')();
+      const formatted = Number.isFinite(evalResult) ? String(parseFloat(evalResult.toFixed(10))) : 'Error';
+      expression = '';
+      currentInput = formatted;
+      resetNext = true;
+      updateDisplay();
+    } catch(e) {
+      currentInput = 'Error';
+      expression = '';
+      resetNext = true;
+      updateDisplay();
+    }
+  }
+
+  function clearAll() {
+    currentInput = '0';
+    expression = '';
+    lastResult = null;
+    resetNext = false;
+    updateDisplay();
+  }
+
+  function backspace() {
+    if (resetNext) return;
+    currentInput = currentInput.length > 1 ? currentInput.slice(0, -1) : '0';
+    updateDisplay();
+  }
+
+  function percent() {
+    const val = parseFloat(currentInput);
+    if (!isNaN(val)) {
+      currentInput = String(val / 100);
+      updateDisplay();
+    }
+  }
+
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.number !== undefined) {
+        inputNumber(btn.dataset.number);
+      } else if (btn.dataset.operator !== undefined) {
+        inputOperator(btn.dataset.operator);
+      } else if (btn.dataset.action) {
+        switch(btn.dataset.action) {
+          case 'clear': clearAll(); break;
+          case 'backspace': backspace(); break;
+          case 'percent': percent(); break;
+          case 'equals': calculate(); break;
+        }
+      }
+    });
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (/[0-9]/.test(e.key)) inputNumber(e.key);
+    else if (e.key === '.') inputNumber('.');
+    else if (e.key === '+') inputOperator('+');
+    else if (e.key === '-') inputOperator('-');
+    else if (e.key === '*') inputOperator('*');
+    else if (e.key === '/') { e.preventDefault(); inputOperator('/'); }
+    else if (e.key === 'Enter' || e.key === '=') calculate();
+    else if (e.key === 'Escape') clearAll();
+    else if (e.key === 'Backspace') backspace();
+  });
+
+  updateDisplay();
+</script>
+</body>
+</html>
